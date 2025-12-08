@@ -1,5 +1,11 @@
+# LangChain and LangGraph
 langgraph==1.0.4
 langchain-core==1.1.0
-gradio==6.0.2
-langchain==1.1.0
+langchain==1.1.2
 langchain-openai==1.1.0
+
+# Web Interface
+gradio==6.0.2
+
+# Configuration
+python-dotenv==1.2.1

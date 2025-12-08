@@ -1,4 +1,37 @@
-.venv
-appeals
-.gradio
-.idea
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+
+# Environment Variables
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# Application Data
+appeals/*.json
+
+# Gradio
+.gradio/
+
+# Old files
+app.py.old
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

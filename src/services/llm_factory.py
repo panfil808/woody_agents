@@ -1,6 +1,5 @@
-"""LLM factory for creating language model instances."""
-
 import logging
+
 from langchain_openai import ChatOpenAI
 
 from ..config import config
@@ -9,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 class LLMFactory:
-    """Factory for creating LLM instances with consistent configuration."""
+    """Factory for creating LLM instances with consistent configuration"""
 
     def __init__(
         self,
@@ -34,7 +33,9 @@ class LLMFactory:
         self.api_key = api_key or config.OPENAI_API_KEY
         self.base_url = base_url or config.LLM_BASE_URL
         self.model = model or config.LLM_MODEL
-        self.temperature = temperature if temperature is not None else config.LLM_TEMPERATURE
+        self.temperature = (
+            temperature if temperature is not None else config.LLM_TEMPERATURE
+        )
         self.max_tokens = max_tokens or config.LLM_MAX_TOKENS
         self.timeout = timeout or config.LLM_TIMEOUT
 
@@ -59,7 +60,9 @@ class LLMFactory:
         final_temperature = temperature if temperature is not None else self.temperature
         final_max_tokens = max_tokens or self.max_tokens
 
-        logger.info(f"Creating LLM instance: model={final_model}, temp={final_temperature}")
+        logger.info(
+            f"Creating LLM instance: model={final_model}, temp={final_temperature}"
+        )
 
         return ChatOpenAI(
             model=final_model,

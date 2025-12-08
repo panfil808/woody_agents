@@ -1,7 +1,4 @@
-"""Agents module for SmartWoody."""
-
-from .dialog_agent import DialogAgent
-from .judge_agent import JudgeAgent
 from .classifier_agent import ClassifierAgent
+from .dialog_agent import DialogAgent
 
-__all__ = ["DialogAgent", "JudgeAgent", "ClassifierAgent"]
+__all__ = ["DialogAgent", "ClassifierAgent"]

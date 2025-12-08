@@ -1,5 +1,3 @@
-"""Classifier agent for categorizing customer issues based on collected information."""
-
 import logging
 from typing import Optional
 

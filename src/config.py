@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -24,7 +25,7 @@ class Config:
     # Application Configuration
     APPEALS_DIR: Path = Path(os.getenv("APPEALS_DIR", "appeals"))
     SERVER_HOST: str = os.getenv("SERVER_HOST", "0.0.0.0")
-    SERVER_PORT: int = int(os.getenv("SERVER_PORT", "7860"))
+    SERVER_PORT: int = int(os.getenv("SERVER_PORT", "7861"))
     DEBUG_MODE: bool = os.getenv("DEBUG_MODE", "True").lower() == "true"
 
     # Order number validation regex

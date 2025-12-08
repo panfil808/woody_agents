@@ -1,5 +1,3 @@
-"""Dialog agent for collecting customer problem information."""
-
 import logging
 from typing import Any
 
@@ -7,11 +5,9 @@ from langchain.agents import create_agent
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import InMemorySaver
 
-from .prompts import DIALOG_AGENT_SYSTEM_PROMPT
 from ..services.llm_factory import LLMFactory
 from ..tools.order_validator import validate_ttn_number
-from ..tools.data_checker import check_data_completeness
-from ..tools.problem_saver import save_problem_data
+from .prompts import DIALOG_AGENT_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +19,6 @@ class DialogAgent:
     Follows a structured workflow:
     1. Collect order number and validate
     2. Collect problem details
-    3. Collect required actions from logistician
     4. Signal completion for classification
     """
 
@@ -58,19 +53,11 @@ class DialogAgent:
         Returns:
             Agent graph instance
         """
-        llm = self.llm_factory.create_llm()
-
-        tools = [
-            validate_ttn_number,
-            # check_data_completeness,
-            # save_problem_data,
-        ]
-
         logger.info("Creating agent graph with tools")
 
         return create_agent(
-            model=llm,
-            tools=tools,
+            model=self.llm_factory.create_llm(),
+            tools=[validate_ttn_number],
             system_prompt=DIALOG_AGENT_SYSTEM_PROMPT,
             checkpointer=self._checkpointer,
         )
@@ -110,9 +97,3 @@ class DialogAgent:
         except Exception as e:
             logger.error(f"Error processing message: {e}", exc_info=True)
             return f"Ошибка агента: {str(e)}"
-
-    def reset(self) -> None:
-        """Reset agent graph and checkpointer."""
-        self._agent_graph = None
-        self._checkpointer = InMemorySaver()
-        logger.info("DialogAgent reset")

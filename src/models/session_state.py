@@ -1,20 +1,18 @@
-"""Session state model for managing conversation state."""
-
+import uuid
 from dataclasses import dataclass, field
 from typing import Any, Optional
-import uuid
 
 
 @dataclass
 class SessionState:
-    """Session state for managing agent conversations."""
+    """Session state for managing agent conversations"""
 
     api_key: str
     active: bool = False
     chat_history: list[dict[str, str]] = field(default_factory=list)
     agent_graph: Optional[Any] = None
     thread_id: Optional[str] = None
-    category: Optional[str] = None  # Problem category from ClassifierAgent
+    category: Optional[str] = None
 
     def start_session(self, agent_graph: Any) -> None:
         """
@@ -29,7 +27,6 @@ class SessionState:
         self.thread_id = str(uuid.uuid4())
 
     def end_session(self) -> None:
-        """End the current session."""
         self.active = False
         self.thread_id = None
         self.category = None
@@ -63,13 +60,3 @@ class SessionState:
             category: Problem category
         """
         self.category = category
-
-    def to_dict(self) -> dict:
-        """Convert to dictionary for serialization."""
-        return {
-            "api_key": self.api_key,
-            "active": self.active,
-            "chat_history": self.chat_history,
-            "thread_id": self.thread_id,
-            "category": self.category,
-        }

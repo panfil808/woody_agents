@@ -1,16 +1,13 @@
-"""Gradio interface for SmartWoody."""
-
 import logging
+import re
 from typing import Any
 
 import gradio as gr
 
-from ..agents.dialog_agent import DialogAgent
-from ..agents.judge_agent import JudgeAgent
-from ..agents.classifier_agent import ClassifierAgent
-from ..services.llm_factory import LLMFactory
-from ..models.session_state import SessionState
+from ..agents import ClassifierAgent, DialogAgent
 from ..config import config
+from ..models.session_state import SessionState
+from ..services.llm_factory import LLMFactory
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +34,9 @@ class GradioInterface:
             session_state = gr.State({})
 
             with gr.Row():
-                msg = gr.Textbox(label="Сообщение", scale=4, placeholder="Опишите проблему...")
+                msg = gr.Textbox(
+                    label="Сообщение", scale=4, placeholder="Опишите проблему..."
+                )
                 submit_btn = gr.Button("Отправить", variant="primary", scale=1)
 
             with gr.Row():
@@ -73,10 +72,10 @@ class GradioInterface:
 
     @staticmethod
     def process_message(
-            message: str, history: list[dict], state: dict[str, Any]
+        message: str, history: list[dict], state: dict[str, Any]
     ) -> tuple[list[dict], dict[str, Any]]:
         """
-        Process user message and return agent response.
+        Process user message and return agent response
 
         Args:
             message: User message
@@ -88,24 +87,28 @@ class GradioInterface:
         """
         logger.info(f"Processing message, active={state.get('active')}")
 
-        # Auto-initialize on first message if needed
         api_key = state.get("api_key")
         if not api_key:
-            # Use API key from environment
             api_key = config.OPENAI_API_KEY
             if not api_key:
-                return history + [
-                    {"role": "assistant", "content": "❌ API ключ не настроен в .env файле"}
-                ], state
+                return (
+                    history
+                    + [
+                        {
+                            "role": "assistant",
+                            "content": "❌ API ключ не настроен в .env файле",
+                        }
+                    ],
+                    state,
+                )
 
             state["api_key"] = api_key
             logger.info("Auto-initialized with API key from config")
 
-        # Start new session if not active
         if not state.get("active"):
             state["active"] = True
             state["chat_history"] = []
-            state["collection_data"] = {}  # Store collected data
+            state["collection_data"] = {}
 
             # Create agents
             llm_factory = LLMFactory(api_key=api_key)
@@ -125,19 +128,24 @@ class GradioInterface:
         dialog_agent = state["dialog_agent"]
 
         try:
-            # DialogAgent collects information
             response = dialog_agent.invoke(message, session_state.get_thread_id())
 
             session_state.add_message("user", message)
             session_state.add_message("assistant", response)
 
-            # Check if DialogAgent signals data collection is complete
-            if "готово к классификации" in response.lower() or "информация собрана" in response.lower():
-                logger.info("DialogAgent signaled data collection complete, invoking ClassifierAgent")
+            if (
+                "готово к классификации" in response.lower()
+                or "информация собрана" in response.lower()
+            ):
+                logger.info(
+                    "DialogAgent signaled data collection complete, invoking ClassifierAgent"
+                )
 
-                # Extract data from chat history for classification
-                order_number, problem_desc, required_actions = GradioInterface._extract_data_from_history(
-                    session_state.chat_history
+                order_number, problem_desc, required_actions = (
+                    GradioInterface._extract_data_from_history(session_state.chat_history)
+                )
+                logger.info(
+                    f"Собранная инфа: {order_number, problem_desc, required_actions}"
                 )
 
                 if order_number and problem_desc and required_actions:
@@ -151,13 +159,18 @@ class GradioInterface:
                         session_state.add_message("assistant", classification_msg)
                         logger.info(f"Problem classified as: {category}")
                     else:
-                        session_state.add_message("assistant", "✗ Не удалось определить категорию")
+                        session_state.add_message(
+                            "assistant", "✗ Не удалось определить категорию"
+                        )
                         logger.warning("Classification failed")
                 else:
                     logger.warning("Cannot classify - missing data")
-                    session_state.add_message("assistant", "⚠️ Недостаточно данных для классификации")
+                    session_state.add_message(
+                        "assistant", "⚠️ Недостаточно данных для классификации"
+                    )
 
             state["chat_history"] = session_state.chat_history
+            logger.info(f"История переписки {state['chat_history']}")
             return state["chat_history"], state
 
         except Exception as e:
@@ -184,19 +197,17 @@ class GradioInterface:
         problem_desc = ""
         required_actions = ""
 
-        # Simple heuristic: extract from conversation
-        full_text = " ".join([msg["content"] for msg in chat_history if msg["role"] == "user"])
+        full_text = " ".join(
+            [msg["content"] for msg in chat_history if msg["role"] == "user"]
+        )
 
-        # Try to find order number pattern
-        import re
-        order_match = re.search(r'\b(?:0{2})?[7|8]\d{7}\b', full_text)
+        order_match = re.search(r"\b(?:0{2})?[7|8]\d{7}\b", full_text)
         if order_match:
             order_number = order_match.group()
 
-        # Problem description and actions - combine relevant user messages
         user_messages = [msg["content"] for msg in chat_history if msg["role"] == "user"]
         if len(user_messages) >= 2:
-            problem_desc = " ".join(user_messages[:-1])  # All but last
+            problem_desc = " ".join(user_messages[:-1])
             required_actions = user_messages[-1] if user_messages else ""
         elif user_messages:
             problem_desc = user_messages[0]
@@ -225,7 +236,9 @@ class GradioInterface:
             # Try to get from config
             api_key = config.OPENAI_API_KEY
             if not api_key:
-                return [{"role": "assistant", "content": "❌ API ключ не настроен"}], state
+                return [
+                    {"role": "assistant", "content": "❌ API ключ не настроен"}
+                ], state
 
         new_state = {
             "api_key": api_key,
@@ -234,12 +247,12 @@ class GradioInterface:
         }
 
         logger.info("New session created")
-        return [{"role": "assistant", "content": "🔄 Новая сессия. Начните диалог."}], new_state
+        return [
+            {"role": "assistant", "content": "🔄 Новая сессия. Начните диалог."}
+        ], new_state
 
     @staticmethod
-    def end_session(
-            state: dict[str, Any]
-    ) -> tuple[str, str, dict[str, Any]]:
+    def end_session(state: dict[str, Any]) -> tuple[str, dict[str, Any]]:
         """
         End current session and evaluate dialog.
 
@@ -250,22 +263,10 @@ class GradioInterface:
             Tuple of (summary, evaluation_markdown, updated_state)
         """
         if not state.get("active"):
-            return "❌ Нет сессии", "", state
+            return "❌ Нет сессии", state
 
         chat_history = state.get("chat_history", [])
         summary = f"Диалог из {len(chat_history)} сообщений"
-
-        # Evaluate dialog
-        try:
-            llm_factory = LLMFactory(api_key=state["api_key"])
-            judge_agent = JudgeAgent(llm_factory)
-
-            evaluation = judge_agent.evaluate_dialog(chat_history)
-            eval_md = judge_agent.format_evaluation_markdown(evaluation)
-
-        except Exception as e:
-            logger.exception("Evaluation failed")
-            eval_md = f"Ошибка оценки: {str(e)}"
 
         # End session
         state["active"] = False
@@ -274,7 +275,7 @@ class GradioInterface:
 
         logger.info("Session ended")
 
-        return summary, eval_md, state
+        return summary, state
 
     def launch(
         self,

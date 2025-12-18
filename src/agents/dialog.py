@@ -19,7 +19,6 @@ class DialogAgent:
         self._llm = llm_factory.create_llm()
         self._tools = [validate_ttn_number]
         self.tool_node = ToolNode(self._tools)
-        logger.info("DialogAgent initialized")
 
     def agent_node(self, state: UnifiedGraphState) -> dict:
         """Основной узел агента для обработки сообщений"""

@@ -1,23 +1,19 @@
 import logging
-import re
 from typing import Any
 
 import gradio as gr
+from langchain.messages import HumanMessage, AIMessage
 
-from ..agents import ClassifierAgent, DialogAgent
+from ..agents.unified_graph import build_unified_graph
 from ..config import config
+from ..llm_factory import LLMFactory
 from ..models.session_state import SessionState
-from ..services.llm_factory import LLMFactory
 
 logger = logging.getLogger(__name__)
 
 
 class GradioInterface:
-    """Gradio web interface for the SmartWoody system."""
-
     def __init__(self):
-        """Initialize Gradio interface."""
-        self.current_state: dict[str, Any] = {}
         logger.info("GradioInterface initialized")
 
     def create_interface(self) -> gr.Blocks:
@@ -27,8 +23,8 @@ class GradioInterface:
         Returns:
             Gradio Blocks instance
         """
-        with gr.Blocks(title="Мультиагентная система для поддержки продавцов") as demo:
-            gr.Markdown("# 🏗️ Мультиагентная система для поддержки продавцов")
+        with gr.Blocks(title="Мультиагентная система поддержки продавцов") as demo:
+            gr.Markdown("# 🏗️ Мультиагентная система поддержки продавцов")
 
             chatbot = gr.Chatbot(label="Диалог", height=550)
             session_state = gr.State({})
@@ -39,13 +35,7 @@ class GradioInterface:
                 )
                 submit_btn = gr.Button("Отправить", variant="primary", scale=1)
 
-            with gr.Row():
-                new_session_btn = gr.Button("🔄 Новая сессия")
-                end_btn = gr.Button("✅ Завершить")
-
-            with gr.Row():
-                summary_out = gr.Textbox(label="Резюме", lines=4)
-                eval_out = gr.Markdown(label="Оценка")
+            new_session_btn = gr.Button("🔄 Новая сессия")
 
             # Event handlers
             submit_btn.click(
@@ -62,10 +52,6 @@ class GradioInterface:
 
             new_session_btn.click(
                 self.new_session, session_state, [chatbot, session_state]
-            ).then(lambda *args: ("", ""), None, [summary_out, eval_out])
-
-            end_btn.click(
-                self.end_session, session_state, [summary_out, eval_out, session_state]
             )
 
         return demo
@@ -108,117 +94,91 @@ class GradioInterface:
         if not state.get("active"):
             state["active"] = True
             state["chat_history"] = []
-            state["collection_data"] = {}
 
-            # Create agents
+            # Создаем единый граф для всех агентов
             llm_factory = LLMFactory(api_key=api_key)
             state["llm_factory"] = llm_factory
-            state["classifier_agent"] = ClassifierAgent(llm_factory)
 
-            # Create DialogAgent immediately
-            dialog_agent = DialogAgent(llm_factory)
-            state["dialog_agent"] = dialog_agent
+            # Строим unified graph с заглушками для RAG и ERP
+            # TODO: Интегрировать реальные vector_store и erp_client
+            unified_graph = build_unified_graph(
+                llm_factory=llm_factory,
+                vector_store=None,  # Заглушка, позже добавим ChromaDB/FAISS
+                erp_client=None,  # Заглушка, позже добавим ERP API
+            )
+            state["unified_graph"] = unified_graph
 
             state["session_state"] = SessionState(api_key=api_key)
-            state["session_state"].start_session(dialog_agent.get_agent_graph())
+            state["session_state"].start_session(unified_graph)
 
-            logger.info("New session created, DialogAgent ready to collect information")
+            logger.info("New session created with unified graph")
 
         session_state = state["session_state"]
-        dialog_agent = state["dialog_agent"]
+        unified_graph = state["unified_graph"]
 
         try:
-            response = dialog_agent.invoke(message, session_state.get_thread_id())
+            # Единый вызов графа - все агенты выполняются автоматически
+            logger.info(
+                f"Invoking unified graph for thread {session_state.get_or_create_thread_id()}"
+            )
 
+            response = unified_graph.invoke(
+                {"messages": [HumanMessage(content=message)]},
+                config={
+                    "configurable": {"thread_id": session_state.get_or_create_thread_id()}
+                },
+            )
+
+            # Извлекаем результаты из state
+            all_messages = response.get("messages", [])
+            category = response.get("category")
+            rag_result = response.get("rag_result")
+            erp_result = response.get("erp_result")
+            final_appeal = response.get("final_appeal")
+
+            # Обновляем историю сообщений
             session_state.add_message("user", message)
-            session_state.add_message("assistant", response)
 
-            if (
-                "готово к классификации" in response.lower()
-                or "информация собрана" in response.lower()
-            ):
-                logger.info(
-                    "DialogAgent signaled data collection complete, invoking ClassifierAgent"
-                )
+            # Извлекаем ТОЛЬКО новые сообщения агента (AIMessage) из этого вызова
+            # response["messages"] содержит ВСЕ сообщения (старые + новые)
+            # Нам нужны только новые AIMessage, сгенерированные в этом вызове
 
-                order_number, problem_desc, required_actions = (
-                    GradioInterface._extract_data_from_history(session_state.chat_history)
-                )
-                logger.info(
-                    f"Собранная инфа: {order_number, problem_desc, required_actions}"
-                )
+            new_ai_messages = []
+            for msg in all_messages:
+                if isinstance(msg, AIMessage) and hasattr(msg, "content") and msg.content:
+                    new_ai_messages.append(msg.content)
 
-                if order_number and problem_desc and required_actions:
-                    classifier_agent = state["classifier_agent"]
-                    category, classification_msg = classifier_agent.classify_from_data(
-                        order_number, problem_desc, required_actions
-                    )
+            # Добавляем только ПОСЛЕДНЕЕ сообщение агента (самое новое)
+            # Это избегает дублирования старых сообщений
+            if new_ai_messages:
+                session_state.add_message("assistant", new_ai_messages[-1])
 
-                    if category:
-                        session_state.set_category(category)
-                        session_state.add_message("assistant", classification_msg)
-                        logger.info(f"Problem classified as: {category}")
-                    else:
-                        session_state.add_message(
-                            "assistant", "✗ Не удалось определить категорию"
-                        )
-                        logger.warning("Classification failed")
-                else:
-                    logger.warning("Cannot classify - missing data")
-                    session_state.add_message(
-                        "assistant", "⚠️ Недостаточно данных для классификации"
-                    )
+            # Сохраняем категорию, если была определена
+            if category:
+                session_state.set_category(category)
+                logger.info(f"Problem classified as category: {category}")
+
+            # Логируем результаты специализированных агентов
+            if rag_result:
+                logger.info("RAG agent provided result")
+            if erp_result:
+                logger.info("ERP agent provided result")
+            if final_appeal:
+                logger.info("Finalizer created appeal")
 
             state["chat_history"] = session_state.chat_history
-            logger.info(f"История переписки {state['chat_history']}")
+            logger.info(f"Всего сообщений в истории: {len(state['chat_history'])}")
+
             return state["chat_history"], state
 
         except Exception as e:
-            logger.exception("Error processing message")
-            error_msg = f"Ошибка агента: {str(e)}"
+            logger.exception("Error processing message with unified graph")
+            error_msg = f"Ошибка системы: {str(e)}"
 
             session_state.add_message("user", message)
             session_state.add_message("assistant", error_msg)
 
             return session_state.chat_history, state
-
-    @staticmethod
-    def _extract_data_from_history(chat_history: list[dict]) -> tuple[str, str, str]:
-        """
-        Extract order number, problem description, and required actions from chat history.
-
-        Args:
-            chat_history: List of chat messages
-
-        Returns:
-            Tuple of (order_number, problem_description, required_actions)
-        """
-        order_number = ""
-        problem_desc = ""
-        required_actions = ""
-
-        full_text = " ".join(
-            [msg["content"] for msg in chat_history if msg["role"] == "user"]
-        )
-
-        order_match = re.search(r"\b(?:0{2})?[7|8]\d{7}\b", full_text)
-        if order_match:
-            order_number = order_match.group()
-
-        user_messages = [msg["content"] for msg in chat_history if msg["role"] == "user"]
-        if len(user_messages) >= 2:
-            problem_desc = " ".join(user_messages[:-1])
-            required_actions = user_messages[-1] if user_messages else ""
-        elif user_messages:
-            problem_desc = user_messages[0]
-            required_actions = "Уточнить у клиента"
-
-        logger.info(
-            f"Extracted data: order={order_number}, "
-            f"desc_len={len(problem_desc)}, actions_len={len(required_actions)}"
-        )
-
-        return order_number, problem_desc, required_actions
 
     @staticmethod
     def new_session(state: dict[str, Any]) -> tuple[list[dict], dict[str, Any]]:
@@ -250,32 +210,6 @@ class GradioInterface:
         return [
             {"role": "assistant", "content": "🔄 Новая сессия. Начните диалог."}
         ], new_state
-
-    @staticmethod
-    def end_session(state: dict[str, Any]) -> tuple[str, dict[str, Any]]:
-        """
-        End current session and evaluate dialog.
-
-        Args:
-            state: Current session state
-
-        Returns:
-            Tuple of (summary, evaluation_markdown, updated_state)
-        """
-        if not state.get("active"):
-            return "❌ Нет сессии", state
-
-        chat_history = state.get("chat_history", [])
-        summary = f"Диалог из {len(chat_history)} сообщений"
-
-        # End session
-        state["active"] = False
-        if "session_state" in state:
-            state["session_state"].end_session()
-
-        logger.info("Session ended")
-
-        return summary, state
 
     def launch(
         self,

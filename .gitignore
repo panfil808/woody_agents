@@ -26,9 +26,6 @@ appeals/*.json
 # Gradio
 .gradio/
 
-# Old files
-app.py.old
-
 # Logs
 *.log
 

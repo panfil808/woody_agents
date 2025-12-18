@@ -1,4 +1,3 @@
-from .classifier_agent import ClassifierAgent
-from .dialog_agent import DialogAgent
+from .dialog import DialogAgent
 
-__all__ = ["DialogAgent", "ClassifierAgent"]
+__all__ = ["DialogAgent"]

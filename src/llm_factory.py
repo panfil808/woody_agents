@@ -2,14 +2,12 @@ import logging
 
 from langchain_openai import ChatOpenAI
 
-from ..config import config
+from .config import config
 
 logger = logging.getLogger(__name__)
 
 
 class LLMFactory:
-    """Factory for creating LLM instances with consistent configuration"""
-
     def __init__(
         self,
         api_key: str = None,
@@ -33,9 +31,7 @@ class LLMFactory:
         self.api_key = api_key or config.OPENAI_API_KEY
         self.base_url = base_url or config.LLM_BASE_URL
         self.model = model or config.LLM_MODEL
-        self.temperature = (
-            temperature if temperature is not None else config.LLM_TEMPERATURE
-        )
+        self.temperature = temperature or config.LLM_TEMPERATURE
         self.max_tokens = max_tokens or config.LLM_MAX_TOKENS
         self.timeout = timeout or config.LLM_TIMEOUT
 
@@ -72,19 +68,3 @@ class LLMFactory:
             api_key=self.api_key,
             base_url=self.base_url,
         )
-
-    def validate_connection(self) -> bool:
-        """
-        Validate LLM connection by making a test call.
-
-        Returns:
-            True if connection is valid, False otherwise
-        """
-        try:
-            llm = self.create_llm()
-            llm.invoke("test")
-            logger.info("LLM connection validated successfully")
-            return True
-        except Exception as e:
-            logger.error(f"LLM connection validation failed: {e}")
-            return False

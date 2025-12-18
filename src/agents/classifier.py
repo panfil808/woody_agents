@@ -10,8 +10,6 @@ logger = logging.getLogger(__name__)
 
 
 class CategoriesEnum:
-    """Перечисление категорий проблем"""
-
     SEND_EARLIER = "Отправить доставку пораньше"
     UNASSIGN_DRIVER = "Снять водителя с доставки"
     CANCEL_DELIVERY = "Отменить доставку"
@@ -31,20 +29,6 @@ def classifier_node(
     state: UnifiedGraphState,
     llm_factory: LLMFactory,
 ) -> dict:
-    """
-    Классифицирует проблему на основе собранных данных.
-
-    Определяет категорию проблемы на основе:
-    - ttn_number: номер ТТН
-    - problem_description: описание проблемы
-
-    Args:
-        state: текущее состояние с собранными данными
-        llm_factory: фабрика для создания LLM
-
-    Returns:
-        dict с обновленным state: messages, category, category_name
-    """
     ttn_number = state.ttn_number
     problem_description = state.problem_description
 
@@ -55,9 +39,6 @@ def classifier_node(
             "messages": [AIMessage(content=error_msg)],
         }
 
-    logger.info(f"Классификация проблемы: ТТН={ttn_number}")
-
-    # Создаем LLM для классификации
     llm = llm_factory.create_llm()
 
     collected_info = f"""
@@ -80,7 +61,6 @@ def classifier_node(
         # Валидация категории
         if category in VALID_CATEGORIES.keys():
             category_name = VALID_CATEGORIES[category]
-            logger.info(f"Проблема классифицирована как: {category} - {category_name}")
 
             message = f"✓ Определена категория: {category_name}"
             return {
@@ -89,7 +69,6 @@ def classifier_node(
                 "category_name": category_name,
             }
         else:
-            logger.warning(f"Невалидная категория: {category}")
             error_msg = f"✗ Получена невалидная категория: {category}"
             return {
                 "messages": [AIMessage(content=error_msg)],

@@ -21,7 +21,6 @@ class DialogAgent:
         self.tool_node = ToolNode(self._tools)
 
     def agent_node(self, state: UnifiedGraphState) -> dict:
-        """Основной узел агента для обработки сообщений"""
         prompt = ChatPromptTemplate.from_messages(
             [
                 ("system", DIALOG_AGENT_SYSTEM_PROMPT),
@@ -34,23 +33,15 @@ class DialogAgent:
         return {"messages": [result]}
 
     def structured_node(self, state: UnifiedGraphState) -> dict:
-        """
-        Извлекает структурированные данные из диалога.
 
-        Записывает в state:
-        - ttn_number: валидированный номер ТТН
-        - problem_description: описание проблемы
-        - dialog_complete: флаг завершения сбора информации
-        """
         context = "\n".join([f"{msg.type}: {msg.content}" for msg in state.messages])
         extract_prompt = f"""Из следующего диалога извлеки ProblemSchema (ttn_number и problem_description).
             Диалог:
             {context}
 
-            Убедись, что ttn_number валиден (проверен ранее), problem_description - полное описание проблемы.
+            Убедись, что ttn_number валиден, problem_description имеет полное описание проблемы.
             НЕ добавляй лишнего.
         """
-
         structured_llm = self._llm.with_structured_output(AppealSchema)
         schema = structured_llm.invoke(extract_prompt)
 
@@ -59,9 +50,6 @@ class DialogAgent:
         if schema.ttn_number and schema.problem_description:
             content = f"✅ Информация собрана. Готово к классификации."
             complete = True
-            logger.info(
-                f"Structured data extracted: TTN={schema.ttn_number} PROBLEM: {schema.problem_description}"
-            )
 
         return {
             "messages": [AIMessage(content=content)],

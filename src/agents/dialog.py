@@ -72,20 +72,10 @@ class DialogAgent:
 
     @staticmethod
     def route_after_agent(state: UnifiedGraphState) -> str:
-        """
-        Маршрутизация после узла agent.
-
-        Логика:
-        - Если нужно вызвать tools → "tools"
-        - Если агент сказал "готово к классификации" → "structured"
-        - Иначе → END (завершить граф, ждать следующего сообщения пользователя)
-        """
-        # Проверяем, нужно ли вызвать инструменты
         tool_decision = tools_condition(state)
         if tool_decision == "tools":
             return "tools"
 
-        # Проверяем последнее сообщение агента
         if len(state.messages) == 0 or not isinstance(state.messages[-1], AIMessage):
             return END
 
@@ -93,5 +83,4 @@ class DialogAgent:
         if "готово к классификации" in last_msg.content.lower():
             return "structured"
 
-        # Агент сгенерировал ответ → завершаем граф, ждём ответа пользователя
         return END

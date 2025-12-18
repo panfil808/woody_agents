@@ -19,26 +19,15 @@ DEFAULT_ROUTE = "finalizer"
 
 def route_by_category(
     state: UnifiedGraphState,
-) -> Literal["rag", "erp", "finalizer"]:
-    """
-    Маршрутизирует к соответствующему агенту на основе категории.
-
-    Args:
-        state: текущее состояние графа с определенной категорией
-
-    Returns:
-        Имя целевого узла: "rag", "erp" или "finalizer"
-    """
+) -> str:
     category = state.category
 
     if category is None:
         logger.warning("Категория не определена, маршрутизация на finalizer")
-        return DEFAULT_ROUTE  # type: ignore
+        return DEFAULT_ROUTE
 
     target = CATEGORY_ROUTING.get(category, DEFAULT_ROUTE)
 
-    logger.info(
-        f"Маршрутизация: категория {category} ({state.category_name}) → {target}"
-    )
+    logger.info(f"Маршрутизация: категория {category} ({state.category_name}) → {target}")
 
-    return target  # type: ignore
+    return target

@@ -17,11 +17,6 @@ logger = logging.getLogger(__name__)
 
 
 def route_after_dialog(state: UnifiedGraphState) -> str:
-    """
-    Маршрутизация после dialog_structured:
-    - Если dialog_complete=True → classifier
-    - Иначе → END (граф завершается, ждёт следующее сообщение пользователя)
-    """
     if state.dialog_complete:
         return "classifier"
     return END

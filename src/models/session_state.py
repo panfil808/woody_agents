@@ -1,6 +1,7 @@
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Optional
+
+from langgraph.graph.state import CompiledStateGraph
 
 
 @dataclass
@@ -8,11 +9,11 @@ class SessionState:
     api_key: str
     active: bool = False
     chat_history: list[dict[str, str]] = field(default_factory=list)
-    agent_graph: Optional[Any] = None
-    thread_id: Optional[str] = None
-    category: Optional[str] = None
+    agent_graph: CompiledStateGraph | None = None
+    thread_id: str | None = None
+    category: str | None = None
 
-    def start_session(self, agent_graph: Any) -> None:
+    def start_session(self, agent_graph: CompiledStateGraph) -> None:
         self.active = True
         self.chat_history = []
         self.agent_graph = agent_graph

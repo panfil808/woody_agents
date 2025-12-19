@@ -3,9 +3,10 @@ from typing import Any, Optional
 
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, StateGraph
+from langgraph.graph.state import CompiledStateGraph
 
 from ..llm_factory import LLMFactory
-from ..models.graph_state import UnifiedGraphState
+from ..models.graph_state import GraphState
 from .category_routing import route_by_category
 from .classifier import classifier_node
 from .dialog import DialogAgent
@@ -16,7 +17,7 @@ from .rag_agent import rag_node
 logger = logging.getLogger(__name__)
 
 
-def route_after_dialog(state: UnifiedGraphState) -> str:
+def route_after_dialog(state: GraphState) -> str:
     if state.dialog_complete:
         return "classifier"
     return END
@@ -26,9 +27,9 @@ def build_unified_graph(
     llm_factory: LLMFactory,
     vector_store: Optional[Any] = None,
     erp_client: Optional[Any] = None,
-):
+) -> CompiledStateGraph:
     dialog_agent = DialogAgent(llm_factory)
-    workflow = StateGraph(UnifiedGraphState)
+    workflow = StateGraph(GraphState)
 
     workflow.add_node("dialog_agent", dialog_agent.agent_node)
     workflow.add_node("dialog_tools", dialog_agent.tool_node)

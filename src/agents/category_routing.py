@@ -1,16 +1,15 @@
 import logging
-from typing import Literal
 
-from ..models.graph_state import UnifiedGraphState
+from ..models.graph_state import GraphState
 
 logger = logging.getLogger(__name__)
 
 # Маппинг категорий на целевых агентов
-CATEGORY_ROUTING: dict[int, str] = {
-    1: "finalizer",
-    2: "erp",
-    3: "rag",
-    4: "finalizer",
+CATEGORY_ROUTING: dict[str, str] = {
+    "1": "finalizer",
+    "2": "erp",
+    "3": "rag",
+    "4": "finalizer",
 }
 
 # Fallback агент для неизвестных категорий
@@ -18,16 +17,13 @@ DEFAULT_ROUTE = "finalizer"
 
 
 def route_by_category(
-    state: UnifiedGraphState,
+    state: GraphState,
 ) -> str:
     category = state.category
 
     if category is None:
-        logger.warning("Категория не определена, маршрутизация на finalizer")
         return DEFAULT_ROUTE
 
     target = CATEGORY_ROUTING.get(category, DEFAULT_ROUTE)
-
-    logger.info(f"Маршрутизация: категория {category} ({state.category_name}) → {target}")
 
     return target

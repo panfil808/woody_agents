@@ -4,13 +4,13 @@ from typing import Any, Optional
 from langchain.messages import AIMessage
 
 from ..llm_factory import LLMFactory
-from ..models.graph_state import UnifiedGraphState
+from ..models.graph_state import GraphState
 
 logger = logging.getLogger(__name__)
 
 
 def rag_node(
-    state: UnifiedGraphState,
+    state: GraphState,
     llm_factory: LLMFactory,
     vector_store: Optional[Any] = None,
 ) -> dict:

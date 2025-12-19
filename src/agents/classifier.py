@@ -3,7 +3,7 @@ import logging
 from langchain.messages import AIMessage, HumanMessage, SystemMessage
 
 from ..llm_factory import LLMFactory
-from ..models.graph_state import UnifiedGraphState
+from ..models.graph_state import GraphState
 from .prompts import CLASSIFIER_AGENT_PROMPT
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ VALID_CATEGORIES = {
 
 
 def classifier_node(
-    state: UnifiedGraphState,
+    state: GraphState,
     llm_factory: LLMFactory,
 ) -> dict:
     ttn_number = state.ttn_number

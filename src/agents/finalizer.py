@@ -3,13 +3,13 @@ import logging
 from langchain.messages import AIMessage
 
 from ..llm_factory import LLMFactory
-from ..models.graph_state import UnifiedGraphState
+from ..models.graph_state import GraphState
 
 logger = logging.getLogger(__name__)
 
 
 def finalizer_node(
-    state: UnifiedGraphState,
+    state: GraphState,
     llm_factory: LLMFactory,
 ) -> dict:
     ttn_number = state.ttn_number

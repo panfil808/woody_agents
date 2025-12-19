@@ -7,7 +7,7 @@ from langgraph.prebuilt import ToolNode, tools_condition
 
 from ..llm_factory import LLMFactory
 from ..models.appeal_schema import AppealSchema
-from ..models.graph_state import UnifiedGraphState
+from ..models.graph_state import GraphState
 from .prompts import DIALOG_AGENT_SYSTEM_PROMPT
 from .tools import validate_ttn_number
 
@@ -20,7 +20,7 @@ class DialogAgent:
         self._tools = [validate_ttn_number]
         self.tool_node = ToolNode(self._tools)
 
-    def agent_node(self, state: UnifiedGraphState) -> dict:
+    def agent_node(self, state: GraphState) -> dict:
         prompt = ChatPromptTemplate.from_messages(
             [
                 ("system", DIALOG_AGENT_SYSTEM_PROMPT),
@@ -32,7 +32,7 @@ class DialogAgent:
         result = chain.invoke({"messages": state.messages})
         return {"messages": [result]}
 
-    def structured_node(self, state: UnifiedGraphState) -> dict:
+    def structured_node(self, state: GraphState) -> dict:
 
         context = "\n".join([f"{msg.type}: {msg.content}" for msg in state.messages])
         extract_prompt = f"""Из следующего диалога извлеки ProblemSchema (ttn_number и problem_description).
@@ -59,13 +59,10 @@ class DialogAgent:
         }
 
     @staticmethod
-    def route_after_agent(state: UnifiedGraphState) -> str:
+    def route_after_agent(state: GraphState) -> str:
         tool_decision = tools_condition(state)
         if tool_decision == "tools":
             return "tools"
-
-        if len(state.messages) == 0 or not isinstance(state.messages[-1], AIMessage):
-            return END
 
         last_msg = state.messages[-1]
         if "готово к классификации" in last_msg.content.lower():
